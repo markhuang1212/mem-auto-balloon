@@ -1,5 +1,6 @@
 [Timer]
-OnCalendar=*-*-* 6:00
+OnCalendar=*-*-* *:00:00
+RandomizedDelaySec=600
 
 [Install]
 WantedBy=timers.target
