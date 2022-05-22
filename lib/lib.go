@@ -117,9 +117,15 @@ func AutoBalloon(dom *libvirt.Domain) error {
 		return err
 	}
 
+	target := meminfo.ActualBalloon - meminfo.Usable
+
+	fmt.Printf("Setting Memory From %dM to %dM\n", meminfo.ActualBalloon/1024, target/1024)
+
 	dom.SetMemory(meminfo.ActualBalloon - meminfo.Usable)
 
 	time.Sleep(5 * time.Second)
+
+	fmt.Printf("Setting Memory From %dM to %dM\n", target/1024, maxmem/1024)
 
 	dom.SetMemory(maxmem)
 
