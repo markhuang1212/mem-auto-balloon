@@ -6,22 +6,21 @@ import (
 )
 
 func TestGetSystemConnection(t *testing.T) {
-	conn := GetSystemConnection()
-	_, err := conn.GetHostname()
+	_, err := GetSystemConnection()
 	if err != nil {
 		t.Error()
 	}
 }
 
 func TestGetMemoryInfo(t *testing.T) {
-	conn := GetSystemConnection()
+	conn, _ := GetSystemConnection()
 	dom, _ := conn.LookupDomainByName("vm1")
-	meminfo := GetGuestMemoryInfo(dom)
+	meminfo, _ := GetGuestMemoryInfo(dom)
 	fmt.Println(meminfo)
 }
 
 func TestAutoBalloon(t *testing.T) {
-	conn := GetSystemConnection()
+	conn, _ := GetSystemConnection()
 	dom, _ := conn.LookupDomainByName("vm1")
 	AutoBalloon(dom)
 }

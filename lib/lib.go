@@ -1,17 +1,31 @@
 package lib
 
 import (
+	"errors"
+	"fmt"
+	"os"
 	"time"
 
 	"libvirt.org/go/libvirt"
 )
 
-func GetSystemConnection() *libvirt.Connect {
+var ErrConnection = errors.New("cannot connect to libvirt")
+var ErrGetMemInfo = errors.New("cannot get guest memory statistics")
+var ErrBadMemInfo = errors.New("bad memory statistics")
+var ErrNotRunning = errors.New("vm not running")
+var ErrNoDomain = errors.New("no domain with given name")
+
+func FatalError(e error) {
+	fmt.Fprintf(os.Stderr, "Error: %s\n", e.Error())
+	os.Exit(1)
+}
+
+func GetSystemConnection() (*libvirt.Connect, error) {
 	conn, err := libvirt.NewConnect("qemu:///system")
 	if err != nil {
-		panic("Cannot create connection")
+		return nil, ErrConnection
 	}
-	return conn
+	return conn, nil
 }
 
 type MemoryInfo struct {
@@ -28,11 +42,12 @@ type MemoryInfo struct {
 	DiskCaches    uint64
 }
 
-func GetGuestMemoryInfo(dom *libvirt.Domain) MemoryInfo {
+func GetGuestMemoryInfo(dom *libvirt.Domain) (MemoryInfo, error) {
+
 	stats, err := dom.MemoryStats(16, 0)
 
 	if err != nil {
-		panic("Cannot get MemoryStats")
+		return MemoryInfo{}, ErrGetMemInfo
 	}
 
 	ret := MemoryInfo{}
@@ -74,24 +89,39 @@ func GetGuestMemoryInfo(dom *libvirt.Domain) MemoryInfo {
 
 	for _, val := range valid {
 		if !val {
-			panic("Invalid Memory Information")
+			return MemoryInfo{}, ErrBadMemInfo
 		}
 	}
 
-	return ret
+	return ret, nil
 }
 
-func AutoBalloon(dom *libvirt.Domain) {
-	maxmem, err := dom.GetMaxMemory()
+func AutoBalloon(dom *libvirt.Domain) error {
+
+	state, _, err := dom.GetState()
 	if err != nil {
-		panic("Cannot get Guest Max Memory")
+		return err
 	}
 
-	meminfo := GetGuestMemoryInfo(dom)
+	if state != libvirt.DOMAIN_RUNNING {
+		return ErrNotRunning
+	}
+
+	maxmem, err := dom.GetMaxMemory()
+	if err != nil {
+		return err
+	}
+
+	meminfo, err := GetGuestMemoryInfo(dom)
+	if err != nil {
+		return err
+	}
 
 	dom.SetMemory(meminfo.ActualBalloon - meminfo.Usable)
 
 	time.Sleep(5 * time.Second)
 
 	dom.SetMemory(maxmem)
+
+	return nil
 }

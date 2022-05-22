@@ -1,11 +1,14 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 
 	"github.com/markhuang1212/memdeflate/lib"
 )
+
+var ErrCommand = errors.New("bad command argument")
 
 func main() {
 	vmname := flag.String("vmname", "", "Name of the vm for auto ballooning")
@@ -13,17 +16,28 @@ func main() {
 	flag.Parse()
 
 	if *vmname == "" {
-		panic("No VM name")
+		lib.FatalError(ErrCommand)
 	}
 
-	conn := lib.GetSystemConnection()
+	conn, err := lib.GetSystemConnection()
+	if err != nil {
+		lib.FatalError(err)
+		return
+	}
+
 	dom, err := conn.LookupDomainByName(*vmname)
 
 	if err != nil {
-		panic("Cannot find domain")
+		lib.FatalError(lib.ErrNoDomain)
+		return
 	}
 
-	lib.AutoBalloon(dom)
+	err = lib.AutoBalloon(dom)
+
+	if err != nil {
+		lib.FatalError(err)
+		return
+	}
 
 	fmt.Println("Success!")
 }
